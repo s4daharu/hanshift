@@ -4,7 +4,17 @@ A simple, polished web app for converting Chinese text between Simplified and Tr
 
 [Live demo](https://s4daharu.github.io/hanshift/) · [Report an issue](https://github.com/s4daharu/hanshift/issues)
 
-![No build step](https://img.shields.io/badge/build-none-b5412d) ![Runs locally](https://img.shields.io/badge/privacy-local-2f6f5e)
+![CI](https://github.com/s4daharu/hanshift/actions/workflows/ci.yml/badge.svg) ![No build step](https://img.shields.io/badge/build-none-b5412d) ![Runs locally](https://img.shields.io/badge/privacy-local-2f6f5e)
+
+<p align="center">
+  <img src="assets/screenshot-desktop.png" alt="HanShift desktop interface converting Simplified Chinese to Traditional Chinese with Taiwan wording">
+</p>
+
+<p align="center">
+  <img src="assets/screenshot-mobile.png" alt="HanShift mobile layout on a 390 pixel wide screen" width="280">
+  <br>
+  <sub>Mobile layout at 390 px</sub>
+</p>
 
 ## Features
 
@@ -47,6 +57,14 @@ python3 -m http.server 4173
 
 Deploy the repository as-is to any static host.
 
+## Checks
+
+```sh
+npm run check
+```
+
+GitHub Actions runs those syntax checks plus HTML/SVG id and sitemap validation on every push and pull request.
+
 ## Deploy
 
 The project is published with GitHub Pages from the `main` branch root:
@@ -55,6 +73,8 @@ The project is published with GitHub Pages from the `main` branch root:
 
 A `.nojekyll` file tells GitHub Pages to serve the static files as-is.
 
+`assets/social-preview.png` is a 1280 × 640 social card. GitHub does not expose an API for uploading it, so it is set once under **Settings → General → Social preview**.
+
 ## Structure
 
 ```text
@@ -62,7 +82,12 @@ A `.nojekyll` file tells GitHub Pages to serve the static files as-is.
 ├── index.html                 # App markup and metadata
 ├── css/styles.css             # Responsive light/dark styling
 ├── js/app.js                  # Conversion and UI logic
-├── assets/favicon.svg
+├── assets/
+│   ├── favicon.svg
+│   ├── screenshot-desktop.png
+│   ├── screenshot-mobile.png
+│   └── social-preview.png
+├── .github/workflows/ci.yml   # Syntax and metadata checks
 ├── vendor/opencc-js/full.js   # Vendored OpenCC engine
 ├── server.js                  # Tiny zero-dependency preview server
 ├── robots.txt

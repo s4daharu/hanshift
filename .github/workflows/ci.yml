@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Syntax and static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check JavaScript syntax
+        run: npm run check
+
+      - name: Validate JSON files
+        run: |
+          node -e "
+          const fs = require('node:fs');
+          for (const file of ['package.json']) {
+            JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(file + ': valid JSON');
+          }
+          "
+
+      - name: Validate metadata files
+        run: |
+          node -e "
+          const fs = require('node:fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+
+          const ids = [...html.matchAll(/\sid=\"([^\"]+)\"/g)].map((match) => match[1]);
+          const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+          if (duplicates.length) {
+            throw new Error('Duplicate ids: ' + duplicates.join(', '));
+          }
+
+          const uses = [...html.matchAll(/<use href=\"#([^\"]+)\"/g)].map((match) => match[1]);
+          const symbols = new Set(
+            [...html.matchAll(/<symbol id=\"([^\"]+)\"/g)].map((match) => match[1])
+          );
+          const missing = uses.filter((use) => !symbols.has(use));
+          if (missing.length) {
+            throw new Error('Missing SVG symbols: ' + missing.join(', '));
+          }
+
+          console.log('index.html: ' + ids.length + ' ids, ' + symbols.size + ' symbols, no duplicates');
+          "
+
+          node -e "
+          const fs = require('node:fs');
+          const xml = fs.readFileSync('sitemap.xml', 'utf8');
+          if (!xml.includes('<urlset') || !xml.includes('https://s4daharu.github.io/hanshift/')) {
+            throw new Error('sitemap.xml looks incomplete');
+          }
+          console.log('sitemap.xml: ok');
+          "

@@ -5,6 +5,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const ROOT = fs.realpathSync(path.resolve(__dirname));
 const PORT = Number(process.env.PORT) || 4173;
@@ -23,6 +24,33 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json'
 };
+
+// The preview server is only used locally, but compressing text keeps local
+// measurements close to GitHub Pages, which serves everything with gzip.
+const COMPRESSIBLE = new Set([
+  '.html', '.css', '.js', '.json', '.xml', '.svg',
+  '.txt', '.md', '.webmanifest'
+]);
+
+function acceptsGzip(header) {
+  if (!header) return false;
+
+  for (const part of String(header).split(',')) {
+    const [name, ...parameters] = part.trim().toLowerCase().split(';');
+    if (name !== 'gzip' && name !== '*') continue;
+
+    const qualityParameter = parameters
+      .map(function (parameter) { return parameter.trim(); })
+      .find(function (parameter) { return parameter.startsWith('q='); });
+    const quality = qualityParameter === undefined
+      ? undefined
+      : Number(qualityParameter.slice(2));
+
+    return quality === undefined || (Number.isFinite(quality) && quality > 0);
+  }
+
+  return false;
+}
 
 function sendText(response, status, message, extraHeaders) {
   const body = message + '\n';
@@ -98,21 +126,32 @@ const server = http.createServer(async function (request, response) {
   const extension = path.extname(realPath).toLowerCase();
   const contentType = MIME_TYPES[extension] || 'application/octet-stream';
   const isVendor = realPath.includes(path.sep + 'vendor' + path.sep);
-  const etag = 'W/"' + stats.size.toString(16) + '-' + Math.floor(stats.mtimeMs).toString(16) + '"';
+  const useGzip = COMPRESSIBLE.has(extension) &&
+    stats.size >= 512 &&
+    acceptsGzip(request.headers['accept-encoding']);
+  const baseEtag = 'W/"' + stats.size.toString(16) + '-' +
+    Math.floor(stats.mtimeMs).toString(16) + (useGzip ? '-gz' : '') + '"';
 
   const headers = {
     'Content-Type': contentType,
-    'Content-Length': stats.size,
     'Cache-Control': isVendor ? 'public, max-age=31536000, immutable' : 'no-cache',
-    ETag: etag,
+    ETag: baseEtag,
+    Vary: 'Accept-Encoding',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'no-referrer'
   };
 
-  if (request.headers['if-none-match'] === etag) {
+  if (useGzip) {
+    headers['Content-Encoding'] = 'gzip';
+  } else {
+    headers['Content-Length'] = stats.size;
+  }
+
+  if (request.headers['if-none-match'] === baseEtag) {
     response.writeHead(304, {
       'Cache-Control': headers['Cache-Control'],
-      ETag: etag
+      ETag: baseEtag,
+      Vary: 'Accept-Encoding'
     });
     response.end();
     return;
@@ -126,14 +165,31 @@ const server = http.createServer(async function (request, response) {
   }
 
   const stream = fs.createReadStream(realPath);
+
+  if (!useGzip) {
+    stream.on('error', function () {
+      if (!response.headersSent) {
+        sendText(response, 500, 'Internal server error');
+      } else {
+        response.destroy();
+      }
+    });
+    stream.pipe(response);
+    return;
+  }
+
+  const gzip = zlib.createGzip({ level: 6 });
+
   stream.on('error', function () {
-    if (!response.headersSent) {
-      sendText(response, 500, 'Internal server error');
-    } else {
-      response.destroy();
-    }
+    gzip.destroy();
+    response.destroy();
   });
-  stream.pipe(response);
+  gzip.on('error', function () {
+    stream.destroy();
+    response.destroy();
+  });
+
+  stream.pipe(gzip).pipe(response);
 });
 
 server.listen(PORT, HOST, function () {
