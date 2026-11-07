@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HanShift — Simplified ⇄ Traditional Chinese Converter</title>
+  <meta name="description" content="Convert Simplified Chinese to Traditional Chinese and back. Taiwan and Hong Kong phrase conversion, live results, and complete privacy. Free and browser-based.">
+  <meta property="og:title" content="HanShift — Simplified ⇄ Traditional Chinese Converter">
+  <meta property="og:description" content="Convert Chinese text in either direction with region-aware wording for Taiwan and Hong Kong. Free, instant, and completely private.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#f5f1e8" id="theme-color">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('hanshift.theme');
+        var theme = saved === 'light' || saved === 'dark'
+          ? saved
+          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.dataset.theme = theme;
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    }());
+  </script>
+</head>
+<body>
+  <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>
+    </symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+    </symbol>
+    <symbol id="icon-swap" viewBox="0 0 24 24">
+      <path d="M3 8h15M15 5l3 3-3 3M21 16H6M9 13l-3 3 3 3"/>
+    </symbol>
+    <symbol id="icon-clipboard" viewBox="0 0 24 24">
+      <rect x="5" y="4" width="14" height="17" rx="2"/>
+      <path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1M9 10h6M9 14h6"/>
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>
+    </symbol>
+    <symbol id="icon-sparkle" viewBox="0 0 24 24">
+      <path d="M11 3l1.7 5.3L18 10l-5.3 1.7L11 17l-1.7-5.3L4 10l5.3-1.7L11 3Z"/>
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/>
+    </symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24">
+      <rect x="9" y="9" width="12" height="12" rx="2"/>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24">
+      <path d="m20 6-11 11-5-5"/>
+    </symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24">
+      <path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>
+    </symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24">
+      <rect x="5" y="11" width="14" height="10" rx="2"/>
+      <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+    </symbol>
+    <symbol id="icon-globe" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M3 12h18M12 3c2.5 2.5 3.9 5.6 3.9 9s-1.4 6.5-3.9 9c-2.5-2.5-3.9-5.6-3.9-9S9.5 5.5 12 3Z"/>
+    </symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>
+    </symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </symbol>
+    <symbol id="icon-chevron" viewBox="0 0 24 24">
+      <path d="m6 9 6 6 6-6"/>
+    </symbol>
+  </svg>
+
+  <a class="skip-link" href="#source">Skip to converter</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <div class="brand">
+        <span class="brand__seal" aria-hidden="true">換</span>
+        <span class="brand__text">
+          <span class="brand__name">HanShift</span>
+          <span class="brand__tag">Chinese script converter</span>
+        </span>
+      </div>
+      <div class="site-header__actions">
+        <span class="local-badge">
+          <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
+          <span>Runs locally</span>
+        </span>
+        <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to dark theme" title="Switch to dark theme">
+          <svg class="icon icon--sun" aria-hidden="true"><use href="#icon-sun"></use></svg>
+          <svg class="icon icon--moon" aria-hidden="true"><use href="#icon-moon"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero__inner">
+        <p class="eyebrow"><span class="eyebrow__dot" aria-hidden="true"></span> Free · instant · private</p>
+        <h1><span class="hero__word">Simplified</span> <span class="hero__swap" aria-hidden="true">⇄</span><span class="sr-only"> to </span> <span class="hero__word">Traditional</span></h1>
+        <p class="hero__lede">Convert Chinese text between <strong lang="zh-Hans">简体</strong> and <strong lang="zh-Hant">繁體</strong> in an instant — with accurate, region-aware wording for Taiwan and Hong Kong.</p>
+      </div>
+    </section>
+
+    <section class="app-section">
+      <div class="container">
+        <div class="converter" id="converter">
+          <div class="toolbar">
+            <div class="segmented" role="group" aria-label="Conversion direction">
+              <button class="segmented__btn is-active" id="dir-cn2t" data-direction="cn2t" type="button" aria-pressed="true">
+                <span class="segmented__zh"><span class="zh-s" lang="zh-Hans">简</span><span class="segmented__arrow" aria-hidden="true">→</span><span class="zh-t" lang="zh-Hant">繁</span></span>
+                <span class="segmented__label">Simplified to Traditional</span>
+              </button>
+              <button class="segmented__btn" id="dir-t2cn" data-direction="t2cn" type="button" aria-pressed="false">
+                <span class="segmented__zh"><span class="zh-t" lang="zh-Hant">繁</span><span class="segmented__arrow" aria-hidden="true">→</span><span class="zh-s" lang="zh-Hans">简</span></span>
+                <span class="segmented__label">Traditional to Simplified</span>
+              </button>
+            </div>
+
+            <div class="toolbar__options">
+              <label class="field" id="variant-field" for="variant">
+                <span class="field__label">Traditional style</span>
+                <span class="select-wrap">
+                  <select id="variant">
+                    <option value="twp">Taiwan · phrases</option>
+                    <option value="tw">Taiwan · characters</option>
+                    <option value="hk">Hong Kong</option>
+                    <option value="hkp">Hong Kong · phrases</option>
+                    <option value="t">OpenCC standard</option>
+                  </select>
+                  <svg class="icon select-wrap__icon" aria-hidden="true"><use href="#icon-chevron"></use></svg>
+                </span>
+              </label>
+              <button class="btn btn--ghost swap-btn" id="swap-btn" type="button" aria-label="Swap direction and move the result into the input" title="Swap direction and move the result into the input">
+                <svg class="icon" aria-hidden="true"><use href="#icon-swap"></use></svg>
+                <span>Swap</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="options-bar">
+            <label class="toggle" for="quote-toggle" title="Convert quotation marks to match the target region">
+              <input class="toggle__input" id="quote-toggle" type="checkbox">
+              <span class="toggle__track" aria-hidden="true"><span class="toggle__thumb"></span></span>
+              <span class="toggle__text" id="quote-label">Use corner quotes 「 」</span>
+            </label>
+            <span class="options-bar__hint" id="quote-hint">Taiwan &amp; Hong Kong typography</span>
+          </div>
+
+          <div class="workspace">
+            <section class="pane" aria-labelledby="source-title">
+              <header class="pane__header">
+                <span class="script-badge script-badge--s" id="source-badge" lang="zh-Hans" aria-hidden="true">简</span>
+                <div class="pane__heading">
+                  <h2 id="source-title">Simplified Chinese</h2>
+                  <p class="pane__sub" id="source-sub">简体中文 · input</p>
+                </div>
+                <div class="pane__actions">
+                  <button class="btn btn--ghost btn--compact" id="paste-btn" type="button" title="Paste from clipboard">
+                    <svg class="icon" aria-hidden="true"><use href="#icon-clipboard"></use></svg>
+                    <span>Paste</span>
+                  </button>
+                  <button class="btn btn--ghost btn--compact" id="clear-btn" type="button" title="Clear input" disabled>
+                    <svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>
+                    <span>Clear</span>
+                  </button>
+                </div>
+              </header>
+              <textarea class="pane__text" id="source" lang="zh-Hans" placeholder="Paste or type Simplified Chinese here…" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-labelledby="source-title"></textarea>
+              <footer class="pane__footer">
+                <button class="text-btn" id="sample-btn" type="button" title="Load example text">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-sparkle"></use></svg>
+                  Try a sample
+                </button>
+                <p class="stats" id="source-stats">0 characters · 0 lines</p>
+              </footer>
+            </section>
+
+            <section class="pane pane--output" aria-labelledby="target-title">
+              <header class="pane__header">
+                <span class="script-badge script-badge--t" id="target-badge" lang="zh-Hant" aria-hidden="true">繁</span>
+                <div class="pane__heading">
+                  <h2 id="target-title">Traditional Chinese</h2>
+                  <p class="pane__sub" id="target-sub">繁體中文 · Taiwan phrases</p>
+                </div>
+                <div class="pane__actions">
+                  <button class="btn btn--primary btn--compact" id="copy-btn" type="button" title="Copy result to clipboard" disabled>
+                    <svg class="icon" id="copy-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>
+                    <span id="copy-label">Copy</span>
+                  </button>
+                </div>
+              </header>
+              <textarea class="pane__text pane__text--output" id="output" lang="zh-Hant" placeholder="Traditional Chinese will appear here…" readonly aria-labelledby="target-title"></textarea>
+              <footer class="pane__footer">
+                <p class="stats" id="target-stats">0 characters · 0 lines</p>
+                <button class="text-btn" id="download-btn" type="button" title="Download result as a text file" disabled>
+                  <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+                  <span>Download .txt</span>
+                </button>
+              </footer>
+            </section>
+          </div>
+        </div>
+
+        <p class="privacy-note">
+          <svg class="icon" aria-hidden="true"><use href="#icon-shield"></use></svg>
+          Your text is converted entirely on this device. Nothing is uploaded.
+        </p>
+      </div>
+    </section>
+
+    <section class="features container" aria-labelledby="features-title">
+      <h2 class="sr-only" id="features-title">Why use HanShift</h2>
+      <article class="feature">
+        <span class="feature__icon" aria-hidden="true"><svg class="icon"><use href="#icon-globe"></use></svg></span>
+        <h3>Speaks your region</h3>
+        <p>Choose Taiwan or Hong Kong vocabulary for natural phrasing. <span lang="zh-Hans">软件</span> can become <span lang="zh-Hant">軟體</span>, and <span lang="zh-Hans">鼠标</span> can become <span lang="zh-Hant">滑鼠</span>.</p>
+      </article>
+      <article class="feature">
+        <span class="feature__icon feature__icon--jade" aria-hidden="true"><svg class="icon"><use href="#icon-book"></use></svg></span>
+        <h3>Phrase-level accuracy</h3>
+        <p>Powered by OpenCC dictionaries, HanShift converts whole words and idioms rather than swapping characters in isolation.</p>
+      </article>
+      <article class="feature">
+        <span class="feature__icon" aria-hidden="true"><svg class="icon"><use href="#icon-shield"></use></svg></span>
+        <h3>Private by design</h3>
+        <p>Everything happens in your browser. There are no accounts, no uploads, and no trackers — just your text and the engine.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__brand"><span class="site-footer__seal" aria-hidden="true">換</span> HanShift</p>
+      <p>Conversion engine: <a href="https://github.com/nk2028/opencc-js" target="_blank" rel="noopener noreferrer">OpenCC</a> · <span>No text leaves your device</span></p>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <noscript>
+    <div class="noscript">This converter needs JavaScript. Please enable it to convert Chinese text.</div>
+  </noscript>
+
+  <script src="vendor/opencc-js/full.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>

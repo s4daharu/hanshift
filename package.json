@@ -1,0 +1,14 @@
+{
+  "name": "hanshift",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A fast, private, mobile-friendly Chinese script converter powered by OpenCC.",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
