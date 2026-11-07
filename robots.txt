@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://s4daharu.github.io/hanshift/sitemap.xml

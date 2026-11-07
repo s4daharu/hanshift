@@ -21,15 +21,28 @@
     t2cn: '這個軟體讓你直接在瀏覽器裡轉換中文，不需要安裝任何程式。你可以選擇台灣或香港的用詞，例如「滑鼠」「腳踏車」和「網路」。'
   };
 
-  const QUOTE_PAIRS = {
+  const QUOTE_INPUTS = {
     traditional: [
-      { open: '\u201C', close: '\u201D', openOut: '\u300C', closeOut: '\u300D' },
-      { open: '\u2018', close: '\u2019', openOut: '\u300E', closeOut: '\u300F' }
+      { open: '\u201C', close: '\u201D' },
+      { open: '\u2018', close: '\u2019' }
     ],
     simplified: [
-      { open: '\u300C', close: '\u300D', openOut: '\u201C', closeOut: '\u201D' },
-      { open: '\u300E', close: '\u300F', openOut: '\u2018', closeOut: '\u2019' }
+      { open: '\u300C', close: '\u300D' },
+      { open: '\u300E', close: '\u300F' }
     ]
+  };
+
+  // Output styles are indexed by nesting depth: alternate between the
+  // primary pair and the secondary pair, starting with the primary one.
+  const QUOTE_OUTPUTS = {
+    traditional: {
+      open: ['\u300C', '\u300E'],
+      close: ['\u300D', '\u300F']
+    },
+    simplified: {
+      open: ['\u201C', '\u2018'],
+      close: ['\u201D', '\u2019']
+    }
   };
 
   const elements = {
@@ -59,7 +72,9 @@
     downloadBtn: document.getElementById('download-btn'),
     themeToggle: document.getElementById('theme-toggle'),
     themeColor: document.getElementById('theme-color'),
-    toast: document.getElementById('toast')
+    toast: document.getElementById('toast'),
+    toastMessage: document.getElementById('toast-message'),
+    toastAction: document.getElementById('toast-action')
   };
 
   let state = loadState();
@@ -67,6 +82,7 @@
   let saveTimer = 0;
   let toastTimer = 0;
   let copyTimer = 0;
+  let toastActionHandler = null;
   let converterCache = new Map();
   let lastErrorShown = false;
 
@@ -110,6 +126,13 @@
     }, CONVERSION_DELAY);
   }
 
+  function flushScheduledConversion() {
+    if (!conversionTimer) return;
+
+    cancelScheduledConversion();
+    runConversion();
+  }
+
   function scheduleSave() {
     if (saveTimer) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(saveState, 300);
@@ -149,22 +172,58 @@
     return converterCache.get(key);
   }
 
+  function isWordApostrophe(characters, index) {
+    if (characters[index] !== '\u2019') return false;
+
+    const previous = characters[index - 1] || '';
+    const next = characters[index + 1] || '';
+
+    // U+2019 is both a closing quote and the apostrophe in English words such
+    // as "don’t" and "It’s". A closing quote next to Chinese text is never
+    // mistaken, because only Latin letters and digits count as word context.
+    return /[A-Za-z0-9]/.test(next) && (!previous || /[A-Za-z0-9\s]/.test(previous));
+  }
+
   function styleQuotes(text, targetIsTraditional) {
-    const pairs = targetIsTraditional ? QUOTE_PAIRS.traditional : QUOTE_PAIRS.simplified;
+    const inputPairs = targetIsTraditional ? QUOTE_INPUTS.traditional : QUOTE_INPUTS.simplified;
+    const output = targetIsTraditional ? QUOTE_OUTPUTS.traditional : QUOTE_OUTPUTS.simplified;
+    const pairByOpen = new Map();
+    const pairByClose = new Map();
+
+    for (const pair of inputPairs) {
+      pairByOpen.set(pair.open, pair);
+      pairByClose.set(pair.close, pair);
+    }
+
     const characters = Array.from(text);
+    const openQuotes = [];
 
-    for (const pair of pairs) {
-      const openIndexes = [];
+    for (let index = 0; index < characters.length; index += 1) {
+      const character = characters[index];
+      const openingPair = pairByOpen.get(character);
 
-      for (let index = 0; index < characters.length; index += 1) {
-        if (characters[index] === pair.open) {
-          openIndexes.push(index);
-        } else if (characters[index] === pair.close && openIndexes.length) {
-          const openIndex = openIndexes.pop();
-          characters[openIndex] = pair.openOut;
-          characters[index] = pair.closeOut;
-        }
+      if (openingPair) {
+        openQuotes.push({ index: index, pair: openingPair });
+        continue;
       }
+
+      const closingPair = pairByClose.get(character);
+      if (!closingPair) continue;
+
+      if (isWordApostrophe(characters, index)) continue;
+
+      // Leave unmatched or improperly nested quotes untouched.
+      const openQuote = openQuotes[openQuotes.length - 1];
+      if (!openQuote || openQuote.pair !== closingPair) continue;
+
+      openQuotes.pop();
+
+      // openQuotes.length is the number of enclosing quotes. Using depth
+      // rather than the input pair keeps mixed nesting correct, such as
+      // ‘outer “inner”’ → 「outer 『inner』」.
+      const level = openQuotes.length % 2;
+      characters[openQuote.index] = output.open[level];
+      characters[index] = output.close[level];
     }
 
     return characters.join('');
@@ -185,6 +244,8 @@
       }
       return '';
     }
+
+    lastErrorShown = false;
 
     if (state.quotes) {
       converted = styleQuotes(converted, state.direction === 'cn2t');
@@ -241,9 +302,17 @@
   }
 
   function updateButtonStates() {
-    elements.clearBtn.disabled = elements.source.value.length === 0;
-    elements.copyBtn.disabled = elements.output.value.length === 0;
-    elements.downloadBtn.disabled = elements.output.value.length === 0;
+    const hasSource = elements.source.value.length > 0;
+    const hasOutput = elements.output.value.length > 0;
+
+    // A conversion can still be waiting on the debounce, so keep Copy and
+    // Download enabled while there is source text to flush. Both handlers
+    // flush pending work before reading the output.
+    const resultPending = hasSource && !hasOutput && engineAvailable;
+
+    elements.clearBtn.disabled = !hasSource;
+    elements.copyBtn.disabled = !hasOutput && !resultPending;
+    elements.downloadBtn.disabled = !hasOutput && !resultPending;
   }
 
   function updateDirectionUI() {
@@ -341,16 +410,38 @@
     }, 1800);
   }
 
-  function showToast(message) {
-    if (toastTimer) window.clearTimeout(toastTimer);
+  function hideToast() {
+    if (toastTimer) {
+      window.clearTimeout(toastTimer);
+      toastTimer = 0;
+    }
 
-    elements.toast.textContent = message;
+    elements.toast.classList.remove('is-visible');
+    elements.toastAction.hidden = true;
+    toastActionHandler = null;
+  }
+
+  function showToast(message, action) {
+    if (toastTimer) {
+      window.clearTimeout(toastTimer);
+      toastTimer = 0;
+    }
+
+    const hasAction = Boolean(action && action.label && typeof action.onAction === 'function');
+
+    elements.toastMessage.textContent = message;
+    elements.toastAction.hidden = !hasAction;
+    toastActionHandler = hasAction ? action.onAction : null;
+
+    if (hasAction) {
+      elements.toastAction.textContent = action.label;
+    }
+
     elements.toast.classList.add('is-visible');
 
     toastTimer = window.setTimeout(function () {
-      toastTimer = 0;
-      elements.toast.classList.remove('is-visible');
-    }, 2400);
+      hideToast();
+    }, hasAction ? 8000 : 2400);
   }
 
   async function copyToClipboard(text) {
@@ -387,6 +478,8 @@
   }
 
   async function handleCopy() {
+    flushScheduledConversion();
+
     const text = elements.output.value;
     if (!text) {
       showToast('There is nothing to copy yet.');
@@ -397,6 +490,7 @@
     if (copied) {
       markCopied();
       showToast('Copied to clipboard.');
+      elements.copyBtn.focus({ preventScroll: true });
     } else {
       showToast('Couldn’t copy automatically — select the result and copy it manually.');
       elements.output.focus();
@@ -422,7 +516,7 @@
       }
       text = await navigator.clipboard.readText();
     } catch (error) {
-      showToast('Clipboard access is blocked — use Ctrl+V or long-press to paste.');
+      showToast('Clipboard access is blocked — use your browser’s paste command (Ctrl/Cmd+V) or long-press.');
       elements.source.focus();
       return;
     }
@@ -437,35 +531,74 @@
     elements.source.focus();
   }
 
+  function captureSourceSnapshot() {
+    return {
+      text: elements.source.value,
+      start: elements.source.selectionStart,
+      end: elements.source.selectionEnd
+    };
+  }
+
+  function restoreSourceSnapshot(snapshot) {
+    elements.source.value = snapshot.text;
+    runConversion();
+    elements.source.focus();
+
+    const length = elements.source.value.length;
+    const start = Math.min(Math.max(snapshot.start, 0), length);
+    const end = Math.min(Math.max(snapshot.end, 0), length);
+    elements.source.setSelectionRange(start, end);
+  }
+
   function handleSample() {
+    const snapshot = captureSourceSnapshot();
+
     cancelScheduledConversion();
     elements.source.value = state.direction === 'cn2t' ? SAMPLES.cn2t : SAMPLES.t2cn;
     runConversion();
-    showToast('Sample loaded. Change the style to compare wording.');
+    showToast(
+      'Sample loaded. Change the style to compare wording.',
+      snapshot.text
+        ? { label: 'Undo', onAction: function () { restoreSourceSnapshot(snapshot); } }
+        : undefined
+    );
   }
 
   function handleClear() {
     if (!elements.source.value) return;
+
+    const snapshot = captureSourceSnapshot();
 
     cancelScheduledConversion();
     elements.source.value = '';
     resetCopyState();
     runConversion();
     elements.source.focus();
-    showToast('Text cleared.');
+    showToast('Text cleared.', {
+      label: 'Undo',
+      onAction: function () { restoreSourceSnapshot(snapshot); }
+    });
   }
 
   function handleSwap() {
     switchDirection(state.direction === 'cn2t' ? 't2cn' : 'cn2t');
   }
 
+  function getLocalDateStamp() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return now.getFullYear() + '-' + month + '-' + day;
+  }
+
   function handleDownload() {
+    flushScheduledConversion();
+
     const text = elements.output.value;
     if (!text) return;
 
     const fileStyle = state.direction === 'cn2t' ? VARIANT_META[state.variant].file : 'simplified';
-    const date = new Date().toISOString().slice(0, 10);
-    const filename = 'hanshift-' + fileStyle + '-' + date + '.txt';
+    const filename = 'hanshift-' + fileStyle + '-' + getLocalDateStamp() + '.txt';
     const blob = new Blob(['\uFEFF', text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -541,6 +674,7 @@
 
   function bindEvents() {
     elements.source.addEventListener('input', function () {
+      if (toastActionHandler) hideToast();
       resetCopyState();
       updateStats();
       updateButtonStates();
@@ -574,6 +708,11 @@
     elements.clearBtn.addEventListener('click', handleClear);
     elements.sampleBtn.addEventListener('click', handleSample);
     elements.downloadBtn.addEventListener('click', handleDownload);
+    elements.toastAction.addEventListener('click', function () {
+      const action = toastActionHandler;
+      hideToast();
+      if (action) action();
+    });
 
     window.addEventListener('pagehide', saveState);
 
@@ -583,14 +722,19 @@
   }
 
   function init() {
-    elements.source.value = state.text;
+    // The engine is about 1 MB, so on a slow connection someone can start
+    // typing before this runs. Keep that text instead of replacing it with
+    // the previously saved state.
+    const textTypedBeforeInit = elements.source.value;
+    elements.source.value = textTypedBeforeInit || state.text;
+
     updateDirectionUI();
     updateStats();
     updateButtonStates();
     setupTheme();
     bindEvents();
 
-    if (state.text) {
+    if (elements.source.value) {
       runConversion();
     }
 

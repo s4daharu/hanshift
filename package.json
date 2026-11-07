@@ -1,12 +1,30 @@
 {
   "name": "hanshift",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "A fast, private, mobile-friendly Chinese script converter powered by OpenCC.",
+  "homepage": "https://s4daharu.github.io/hanshift/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s4daharu/hanshift.git"
+  },
+  "bugs": {
+    "url": "https://github.com/s4daharu/hanshift/issues"
+  },
+  "keywords": [
+    "chinese",
+    "simplified-chinese",
+    "traditional-chinese",
+    "opencc",
+    "converter",
+    "taiwan",
+    "hong-kong"
+  ],
   "license": "MIT",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "check": "node --check js/app.js && node --check server.js"
   },
   "engines": {
     "node": ">=18"

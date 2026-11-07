@@ -6,15 +6,16 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname);
+const ROOT = fs.realpathSync(path.resolve(__dirname));
 const PORT = Number(process.env.PORT) || 4173;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8',
   '.md': 'text/markdown; charset=utf-8',
@@ -51,6 +52,14 @@ const server = http.createServer(async function (request, response) {
 
   if (pathname.endsWith('/')) pathname += 'index.html';
 
+  // Do not expose .git, .env, or any other dotfile in the project directory.
+  if (pathname.split('/').some(function (segment) {
+    return segment.length > 1 && segment.startsWith('.');
+  })) {
+    sendText(response, 404, 'Not found');
+    return;
+  }
+
   const filePath = path.normalize(path.join(ROOT, pathname));
 
   if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
@@ -58,10 +67,24 @@ const server = http.createServer(async function (request, response) {
     return;
   }
 
+  let realPath;
   let stats;
 
   try {
-    stats = await fsp.stat(filePath);
+    realPath = await fsp.realpath(filePath);
+  } catch (error) {
+    sendText(response, 404, 'Not found');
+    return;
+  }
+
+  // A symlink inside the project must not be able to escape the root.
+  if (realPath !== ROOT && !realPath.startsWith(ROOT + path.sep)) {
+    sendText(response, 403, 'Forbidden');
+    return;
+  }
+
+  try {
+    stats = await fsp.stat(realPath);
   } catch (error) {
     sendText(response, 404, 'Not found');
     return;
@@ -72,9 +95,9 @@ const server = http.createServer(async function (request, response) {
     return;
   }
 
-  const extension = path.extname(filePath).toLowerCase();
+  const extension = path.extname(realPath).toLowerCase();
   const contentType = MIME_TYPES[extension] || 'application/octet-stream';
-  const isVendor = filePath.includes(path.sep + 'vendor' + path.sep);
+  const isVendor = realPath.includes(path.sep + 'vendor' + path.sep);
   const etag = 'W/"' + stats.size.toString(16) + '-' + Math.floor(stats.mtimeMs).toString(16) + '"';
 
   const headers = {
@@ -102,7 +125,7 @@ const server = http.createServer(async function (request, response) {
     return;
   }
 
-  const stream = fs.createReadStream(filePath);
+  const stream = fs.createReadStream(realPath);
   stream.on('error', function () {
     if (!response.headersSent) {
       sendText(response, 500, 'Internal server error');
@@ -114,7 +137,10 @@ const server = http.createServer(async function (request, response) {
 });
 
 server.listen(PORT, HOST, function () {
-  console.log('HanShift is running at http://localhost:' + PORT);
+  const displayHost = HOST === '0.0.0.0' || HOST === '::'
+    ? 'localhost'
+    : HOST;
+  console.log('HanShift is running at http://' + displayHost + ':' + PORT);
 });
 
 function shutdown() {

@@ -9,7 +9,7 @@
   --text: #211c16;
   --text-secondary: #685e51;
   --text-tertiary: #746a5c;
-  --text-placeholder: #7c7163;
+  --text-placeholder: #746a5c;
   --border: #e4dccd;
   --border-strong: #d2c6b4;
   --accent: #b5412d;
@@ -87,6 +87,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  padding-right: env(safe-area-inset-right);
+  padding-left: env(safe-area-inset-left);
   background:
     radial-gradient(48rem 32rem at 105% -8%, var(--wash-warm), transparent 62%),
     radial-gradient(42rem 28rem at -8% 4%, var(--wash-jade), transparent 58%),
@@ -170,6 +172,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   min-height: 78px;
+  padding-top: env(safe-area-inset-top);
 }
 
 .brand {
@@ -973,6 +976,11 @@ body {
   left: 50%;
   bottom: calc(1.5rem + env(safe-area-inset-bottom));
   z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  width: max-content;
   max-width: calc(100% - 2rem);
   padding: 0.68rem 1.05rem;
   border-radius: 999px;
@@ -991,7 +999,32 @@ body {
 
 .toast.is-visible {
   opacity: 1;
+  pointer-events: auto;
   transform: translate(-50%, 0);
+}
+
+.toast__action {
+  flex: none;
+  padding: 0.1rem 0.15rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.toast__action:hover {
+  opacity: 0.78;
+}
+
+.toast__action:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }
 
 .noscript {
@@ -1047,6 +1080,25 @@ body {
   .select-wrap select {
     /* Keep at 16px so iOS Safari does not zoom when the select is focused. */
     font-size: 16px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .select-wrap select {
+    /* Covers larger touch devices such as iPads as well. */
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .swap-btn,
+  .pane__actions .btn,
+  .text-btn {
+    min-height: 44px;
   }
 }
 
@@ -1140,6 +1192,10 @@ body {
     line-height: 1.3;
   }
 
+  .select-wrap select {
+    min-height: 44px;
+  }
+
   .select-wrap {
     flex: 1;
     width: 100%;
@@ -1209,17 +1265,17 @@ body {
   }
 
   .icon-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
 
   .eyebrow {
-    font-size: 0.61rem;
+    font-size: 0.65rem;
   }
 
   .swap-btn {
-    width: 40px;
-    min-height: 40px;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
   }
 
@@ -1236,14 +1292,14 @@ body {
   }
 
   .pane__actions .btn:not(.btn--primary) {
-    width: 40px;
-    min-height: 40px;
+    width: 44px;
+    min-height: 44px;
     padding: 0;
   }
 
   .pane__actions .btn--primary,
   .text-btn {
-    min-height: 38px;
+    min-height: 44px;
   }
 
   .text-btn {
@@ -1264,19 +1320,19 @@ body {
   }
 
   .stats {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
   }
 
   .text-btn {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
   }
 
   .pane__heading h2 {
-    font-size: 0.88rem;
+    font-size: 0.9rem;
   }
 
   .pane__sub {
-    font-size: 0.66rem;
+    font-size: 0.7rem;
   }
 }
 
@@ -1317,7 +1373,8 @@ body {
   }
 
   .pane__footer {
-    gap: 0.4rem;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.4rem;
   }
 }
 

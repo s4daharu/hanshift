@@ -5,22 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>HanShift — Simplified ⇄ Traditional Chinese Converter</title>
   <meta name="description" content="Convert Simplified Chinese to Traditional Chinese and back. Taiwan and Hong Kong phrase conversion, live results, and complete privacy. Free and browser-based.">
+  <meta name="application-name" content="HanShift">
+  <link rel="canonical" href="https://s4daharu.github.io/hanshift/">
   <meta property="og:title" content="HanShift — Simplified ⇄ Traditional Chinese Converter">
   <meta property="og:description" content="Convert Chinese text in either direction with region-aware wording for Taiwan and Hong Kong. Free, instant, and completely private.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://s4daharu.github.io/hanshift/">
+  <meta property="og:site_name" content="HanShift">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HanShift — Simplified ⇄ Traditional Chinese Converter">
+  <meta name="twitter:description" content="Convert Chinese text in either direction with region-aware wording for Taiwan and Hong Kong. Free, instant, and completely private.">
   <meta name="theme-color" content="#f5f1e8" id="theme-color">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="css/styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "HanShift",
+    "url": "https://s4daharu.github.io/hanshift/",
+    "description": "A fast, private, browser-based converter for Simplified and Traditional Chinese with Taiwan and Hong Kong wording.",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0"
+    }
+  }
+  </script>
   <script>
     (function () {
+      var saved = null;
+
       try {
-        var saved = localStorage.getItem('hanshift.theme');
-        var theme = saved === 'light' || saved === 'dark'
-          ? saved
-          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        document.documentElement.dataset.theme = theme;
+        saved = window.localStorage.getItem('hanshift.theme');
       } catch (error) {
-        document.documentElement.dataset.theme = 'light';
+        // Storage can be unavailable; the OS preference still applies.
+      }
+
+      var prefersDark = Boolean(
+        window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      );
+      var theme = saved === 'light' || saved === 'dark'
+        ? saved
+        : (prefersDark ? 'dark' : 'light');
+
+      document.documentElement.dataset.theme = theme;
+
+      var themeColor = document.getElementById('theme-color');
+      if (themeColor) {
+        themeColor.setAttribute('content', theme === 'dark' ? '#12100d' : '#f5f1e8');
       }
     }());
   </script>
@@ -116,16 +152,17 @@
       <div class="container">
         <div class="converter" id="converter">
           <div class="toolbar">
-            <div class="segmented" role="group" aria-label="Conversion direction">
-              <button class="segmented__btn is-active" id="dir-cn2t" data-direction="cn2t" type="button" aria-pressed="true">
+            <div class="segmented" role="group" aria-label="Conversion direction" aria-describedby="direction-help">
+              <button class="segmented__btn is-active" id="dir-cn2t" data-direction="cn2t" type="button" aria-pressed="true" title="Switch to Simplified → Traditional; moves the current result into the input">
                 <span class="segmented__zh"><span class="zh-s" lang="zh-Hans">简</span><span class="segmented__arrow" aria-hidden="true">→</span><span class="zh-t" lang="zh-Hant">繁</span></span>
                 <span class="segmented__label">Simplified to Traditional</span>
               </button>
-              <button class="segmented__btn" id="dir-t2cn" data-direction="t2cn" type="button" aria-pressed="false">
+              <button class="segmented__btn" id="dir-t2cn" data-direction="t2cn" type="button" aria-pressed="false" title="Switch to Traditional → Simplified; moves the current result into the input">
                 <span class="segmented__zh"><span class="zh-t" lang="zh-Hant">繁</span><span class="segmented__arrow" aria-hidden="true">→</span><span class="zh-s" lang="zh-Hans">简</span></span>
                 <span class="segmented__label">Traditional to Simplified</span>
               </button>
             </div>
+            <p class="sr-only" id="direction-help">Switching direction moves the current result into the input.</p>
 
             <div class="toolbar__options">
               <label class="field" id="variant-field" for="variant">
@@ -166,7 +203,7 @@
                   <p class="pane__sub" id="source-sub">简体中文 · input</p>
                 </div>
                 <div class="pane__actions">
-                  <button class="btn btn--ghost btn--compact" id="paste-btn" type="button" title="Paste from clipboard">
+                  <button class="btn btn--ghost btn--compact" id="paste-btn" type="button" title="Paste from clipboard (adds to the end)">
                     <svg class="icon" aria-hidden="true"><use href="#icon-clipboard"></use></svg>
                     <span>Paste</span>
                   </button>
@@ -246,7 +283,10 @@
     </div>
   </footer>
 
-  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true">
+    <span id="toast-message"></span>
+    <button class="toast__action" id="toast-action" type="button" hidden>Undo</button>
+  </div>
 
   <noscript>
     <div class="noscript">This converter needs JavaScript. Please enable it to convert Chinese text.</div>
